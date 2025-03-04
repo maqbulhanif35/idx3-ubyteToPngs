@@ -3,14 +3,21 @@
 #include <png.h>
 #include <string.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <errno.h>
 #define offset 16
 unsigned char buffer[784];
 int height[1];
 int width[1];
 int numOfImages[1];
+int verbose = 0;
 int images(const char *filename){
     FILE *read;
     read=fopen(filename,"r");
+    if(read==NULL){
+        printf("ERROR: Failed to open file %s\n",filename);
+        exit(1);
+    }
     fseek(read, 4, SEEK_SET);
     fread(numOfImages, (sizeof(int)), 1, read);
     numOfImages[0] = ((numOfImages[0] >> 24) & 0xff) |     
@@ -55,12 +62,9 @@ void write_png_file(const char* filename, int width, int height) {
     }
 
     png_init_io(png_ptr, fp);
-
-    // Set the image information
     png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
-    // Write the image data
     png_bytepp row_pointers = (png_bytepp)malloc(sizeof(png_bytep) * height);
     for (int y = 0; y < height; y++) {
         row_pointers[y] = &buffer[y * width];
@@ -68,7 +72,6 @@ void write_png_file(const char* filename, int width, int height) {
     png_set_rows(png_ptr, info_ptr, row_pointers);
     png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
 
-    // Cleanup
     free(row_pointers);
     png_destroy_write_struct(&png_ptr, &info_ptr);
     fclose(fp);
@@ -120,17 +123,44 @@ int readFile(const char* fileName,const char* folder,int position)
 
 int main(int argc, char *argv[])
 {
-    
+    if(argc<=1){
+        printf("USAGE: ./main fileName folderName\n");
+        return 0;
+    }
     const char* file=argv[1];
     const char* folder=argv[2];
+    if(file==NULL){
+        printf("Enter file name!\n" );
+        return 0;
+    }else if (folder==NULL)
+    {
+        printf("Enter folder name to store the images\n");
+        return 0;
+    }
+    //check if folder exists
+    errno=0;
+    DIR* x = opendir(folder);
+    if(errno==ENOENT){
+        printf("ERROR: Folder does not exist!\n");
+        exit(1);
+    }
+    else if(errno!=0){
+        printf("ERROR: Failed to open folder,ERRNO=%d\n",errno);
+        exit(1);
+    }
+    
+    //check if file exists
+
+    for (int i = 1; i < argc; ++i)
+    {
+        if(strcmp(argv[i],"-v") == 0)verbose=1;
+    }
     int num=images(file);
     for (int i = 0; i <num; i++)
     {
         readFile(file,folder,i);
-        printf("%d out of %d\n",i,num);
+        if(verbose==1)printf("%d out of %d\n",i,num);
     }
-    
-   // write_png_file("pngs/output.png", width, height, buffer);
 }
 
 

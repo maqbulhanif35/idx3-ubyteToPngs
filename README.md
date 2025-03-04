@@ -5,4 +5,4 @@ libpng
 # Building
 gcc main.c -lpng
 # Usage
-./a.out <filename> <foldername>
+./a.out filename foldername
